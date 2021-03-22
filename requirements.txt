@@ -8,4 +8,4 @@ flask-executor==0.9.3
 flask-cors==3.0.9
 apispec==4.0.0
 apispec-webframeworks==0.5.2
-geovaex==0.1.0
+geovaex==0.2.0
