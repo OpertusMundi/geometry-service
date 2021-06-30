@@ -37,6 +37,7 @@ services:
       DB_NAME: 'opertusmundi_geometry_tests'
       DB_PASS: 'opertus'
       HOME: '/work' # Vaex needs home directory to store config files
+      VALHALLA_URL: ''
 
 networks:
   opertusmundi_network:

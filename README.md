@@ -22,7 +22,7 @@ The *geometry service* offers the ability to apply geometric operations on one o
 
 ### Install package
 
-Install `geovaed`:
+Install `geovaex`:
 ```
 pip install git+https://github.com/OpertusMundi/geovaex
 ```
@@ -46,6 +46,7 @@ The following environment variables should be set:
 * `INPUT_DIR`<sup>*</sup>: The location of the input files.
 * `CORS`: List or string of allowed origins (*default*: '*').
 * `LOGGING_CONFIG_FILE`<sup>*</sup>: The logging configuration file.
+* `VALHALLA_URL`<sup>*</sup>: Valhalla service endpoint.
 
 <sup>*</sup> Required.
 

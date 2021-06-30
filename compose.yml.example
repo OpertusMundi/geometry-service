@@ -50,6 +50,7 @@ services:
       DB_USER: 'geometry_service'
       DB_NAME: 'opertusmundi_geometry'
       DB_PASS_FILE: '/secrets/db_pass'
+      VALHALLA_URL: ''
 
 networks:
   opertusmundi_network:
