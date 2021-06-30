@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 from flask_executor import Executor
 from geometry_service.database.actions import db_update_queue_status
 from geometry_service.loggers import logger
-from ..forms.filter_ import FilterFileForm, FilterPathForm, BufferFileForm, BufferPathForm
+from ..forms.filter_ import FilterFileForm, FilterPathForm, BufferFileForm, BufferPathForm, TravelDistanceFileForm, TravelDistancePathForm, TravelTimeFileForm, TravelTimePathForm
 from ..context import get_session
 from ..async_ import filter_process, async_callback
 from ..helpers import parse_read_options, send_file, copy_to_output
@@ -20,6 +20,10 @@ def _before_requests():
     logger.info('API request [endpoint: "%s"]', request.endpoint)
     if request.endpoint == 'filter.within_buffer':
         form = BufferFileForm() if 'resource' in request.files.keys() else BufferPathForm()
+    elif request.endpoint == 'filter.travel_dist':
+        form = TravelDistanceFileForm() if 'resource' in request.files.keys() else TravelDistancePathForm()
+    elif request.endpoint == 'filter.travel_time':
+        form = TravelTimeFileForm() if 'resource' in request.files.keys() else TravelTimePathForm()
     else:
         form = FilterFileForm() if 'resource' in request.files.keys() else FilterPathForm()
     if not form.validate_on_submit():
@@ -55,8 +59,9 @@ def _filter(action, **kwargs):
         (str): JSONified flask response depending on the requested response type.
     """
     # Prompt Response
+    wkt = g.form.wkt.data if action[0:6] != 'travel' else [g.form.point_lat.data, g.form.point_lon.data]
     if g.form.response.data == 'prompt':
-        ticket, export, success, error_msg = filter_process(g.session, g.src_file, action, g.form.wkt.data, **kwargs)
+        ticket, export, success, error_msg = filter_process(g.session, g.src_file, action, wkt, **kwargs)
         if not success:
             db_update_queue_status(g.session['ticket'], completed=True, success=False, error_msg=error_msg)
             return make_response({'error': error_msg}, 500)
@@ -71,7 +76,7 @@ def _filter(action, **kwargs):
         return make_response({'type': 'prompt', 'path': path}, 200)
 
     # Deferred Response
-    future = executor.submit(filter_process, g.session, g.src_file, action, g.form.wkt.data, **kwargs)
+    future = executor.submit(filter_process, g.session, g.src_file, action, wkt, **kwargs)
     future.add_done_callback(async_callback)
     ticket = g.session['ticket']
     return make_response({'type': 'deferred', 'ticket': ticket, 'statusUri': "/jobs/status?ticket={ticket}".format(ticket=ticket)}, 202)
@@ -166,3 +171,59 @@ def within_buffer():
             400: validationErrorResponse
     """
     return _filter('within_buffer', radius=g.form.radius.data, **g.parameters)
+
+@bp.route('/travel_distance', methods=['POST'])
+def travel_dist():
+    """**Flask POST rule.**
+
+    Create a new spatial file, subset of the source, with the condition that each feature in this dataset is within a given travel distance.
+    ---
+    post:
+        summary: Within travel distance.
+        description: Create a new spatial file, subset of the source, with the condition that each feature in this dataset is within a given travel distance from a source point.
+        tags:
+            - Filter
+        parameters:
+            - idempotencyKey
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema: travelDistanceFilterForm
+                multipart/form-data:
+                    schema: travelDistanceFilterFormMultipart
+        responses:
+            200: promptResultResponse
+            202: deferredResponse
+            204: noContentResponse
+            400: validationErrorResponse
+    """
+    return _filter('travel_distance', distance=g.form.distance.data, costing=g.form.costing.data, **g.parameters)
+
+@bp.route('/travel_time', methods=['POST'])
+def travel_time():
+    """**Flask POST rule.**
+
+    Create a new spatial file, subset of the source, with the condition that each feature in this dataset is within a given travel time.
+    ---
+    post:
+        summary: Within travel time.
+        description: Create a new spatial file, subset of the source, with the condition that each feature in this dataset is within a given travel time from a source point.
+        tags:
+            - Filter
+        parameters:
+            - idempotencyKey
+        requestBody:
+            required: true
+            content:
+                application/x-www-form-urlencoded:
+                    schema: travelTimeFilterForm
+                multipart/form-data:
+                    schema: travelTimeFilterFormMultipart
+        responses:
+            200: promptResultResponse
+            202: deferredResponse
+            204: noContentResponse
+            400: validationErrorResponse
+    """
+    return _filter('travel_time', time=g.form.time.data, costing=g.form.costing.data, **g.parameters)

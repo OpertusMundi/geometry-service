@@ -140,6 +140,84 @@ def add_components(spec):
         "example": "POLYGON((6.4 49., 6.5 50., 6.6 49.5, 6.4 49.))"
     }
 
+    travel_form = {
+        **base_form,
+        "properties": {
+            **base_form["properties"],
+            "resource": resource,
+            "point_lat": {
+                "type": "number",
+                "format": "float",
+                "description": "Latitude of the source point in WGS 84 (EPSG:4326).",
+                "example": 37.968312
+            },
+            "point_lon": {
+                "type": "number",
+                "format": "float",
+                "description": "Lotitude of the source point in WGS 84 (EPSG:4326).",
+                "example": 23.710438
+            },
+            "costing": {
+                "type": "string",
+                "description": "Costing algorithm (one of *auto*, *bicyle*, *pedestrian*, *bikeshare* or *bus*; see [https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/#costing-models](https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/#costing-models)).",
+                "enum": ["auto", "bicycle", "pedestrian", "bikeshare", "bus"],
+                "default": "auto"
+            }
+        }
+    }
+
+    travel_dist_form = {
+        **travel_form,
+        "properties": {
+            **travel_form["properties"],
+            "distance": {
+                "type": "number",
+                "format": "float",
+                "description": "A floating point value specifying the distance in kilometers (max: 200).",
+                "minimum": 0.0,
+                "maximum": 200.0,
+                "example": 10
+            }
+        },
+        "required": ["resource", "point_lat", "point_lon", "distance"]
+    }
+    spec.components.schema('travelDistanceFilterForm', travel_dist_form)
+
+    travel_dist_form_multi = {
+        **travel_dist_form,
+        "properties": {
+            **travel_dist_form["properties"],
+            "resource": resource_multi
+        }
+    }
+    spec.components.schema('travelDistanceFilterFormMultipart', travel_dist_form_multi)
+
+    travel_time_form = {
+        **travel_form,
+        "properties": {
+            **travel_form["properties"],
+            "time": {
+                "type": "number",
+                "format": "float",
+                "description": "A floating point value specifying the time in minutes (max: 120).",
+                "minimum": 0.0,
+                "maximum": 120.0,
+                "example": 60
+            }
+        },
+        "required": ["resource", "point_lat", "point_lon", "time"]
+    }
+    spec.components.schema('travelTimeFilterForm', travel_time_form)
+
+    travel_time_form_multi = {
+        **travel_time_form,
+        "properties": {
+            **travel_time_form["properties"],
+            "resource": resource_multi
+        }
+    }
+    spec.components.schema('travelTimeFilterFormMultipart', travel_time_form_multi)
+
     filter_form = {
         **base_form,
         "properties": {

@@ -1,6 +1,10 @@
 from .geovaex import GeoVaex
+from .valhalla import Valhalla
 from shutil import rmtree
 import os
+import pyproj
+import numpy as np
+import pygeos as pg
 from geometry_service.database.actions import db_update_queue_status
 from geometry_service.exceptions import ResultedEmptyDataFrame
 from .helpers import copy_to_output
@@ -73,6 +77,25 @@ def filter_process(session, file, action, wkt, **kwargs):
         crs = kwargs.pop('crs', None)
         read_options = kwargs.pop('read_options', {})
         geovaex = GeoVaex(file, session['working_path'], crs=crs, read_options=read_options)
+        if action == 'travel_distance' or action == 'travel_time':
+            valhalla = Valhalla()
+            distance = kwargs.pop('distance', None)
+            time = kwargs.pop('time', None)
+            costing = kwargs.pop('costing', None)
+            if costing == '':
+                costing = None
+            lat, lon = wkt
+            polygon = valhalla.isochrone(lat, lon, distance=distance, costing=costing) if action == 'travel_distance' else valhalla.isochrone(lat, lon, time=time, costing=costing)
+            if geovaex.gdf.geometry.crs.to_epsg() != 4326:
+                from_ = pyproj.crs.CRS.from_epsg(4326)
+                to_ = geovaex.gdf.geometry.crs
+                transformer = pyproj.Transformer.from_crs(from_, to_, always_xy=True)
+                def transform(coords):
+                    x, y = transformer.transform(*coords.T)
+                    return np.array([x, y]).T
+                polygon = pg.apply(polygon, transform)
+            wkt = pg.to_wkt(polygon)
+            action = 'within'
         export = geovaex.filter_(action, wkt, **kwargs)
     except ResultedEmptyDataFrame as e:
         return (session['ticket'], None, True, str(e))
